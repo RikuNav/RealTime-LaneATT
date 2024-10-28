@@ -27,6 +27,29 @@ def load_last_train_state(model, optimizer, scheduler, checkpoints_dir):
 
     return epoch, model, optimizer, scheduler
 
+
+def load_last_train_state_eval(model, checkpoints_dir):
+    """
+        Load the last training state from the checkpoint files for the evaluation.
+
+        Args:
+            model: The model to be loaded.
+            optimizer: The optimizer to be loaded.
+            scheduler: The scheduler to be loaded.
+            config: The configuration of the training.
+        
+        Returns:
+            epoch: The epoch of the last checkpoint.
+            model: The model loaded from the last checkpoint.
+    """
+    
+    train_state_path, epoch = get_last_checkpoint(checkpoints_dir)
+    train_state = torch.load(os.path.join(checkpoints_dir, train_state_path), weights_only=True)
+    model.load_state_dict(train_state['model'])
+    
+    return epoch, model
+
+
 def save_train_state(epoch, model, optimizer, scheduler, checkpoints_dir):
     """
         Save the training state to the checkpoint files.

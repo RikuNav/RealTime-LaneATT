@@ -275,6 +275,37 @@ class LaneATT(nn.Module):
             if epoch % self.__laneatt_config['model_checkpoint_interval'] == 0:
                 utils.save_train_state(epoch, model, optimizer, scheduler, self.__laneatt_config)
 
+    def eval_model(self, mode='test'):
+        """
+            Evaluate the model
+        """
+
+        # Setup the logger
+        logger = utils.setup_logging(self.__laneatt_config['logs_dir'])
+        logger.info('Starting evaluation...')
+
+        model = self.to(self.device)
+
+        last_epoch, model = utils.load_last_train_state_eval(model, self.__laneatt_config)
+        evaluated_epoch = last_epoch
+
+        model.eval()
+
+        # Get the data loader based on the mode
+        if mode == 'valid':
+            data_loader = self.__get_dataloader('val')
+        else:
+            data_loader = self.__get_dataloader('test')
+
+        with torch.no_grad():
+            for i, (images, labels) in enumerate(tqdm(data_loader)):
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+                outputs = model(images)
+                loss, _ = model.__loss(outputs, labels)
+            
+            logger.debug('Loss: %.5f - Epoch: %d', loss.item(), evaluated_epoch)
+
     def __loss(self, proposals_list, targets, cls_loss_weight=10):
         focal_loss = utils.FocalLoss(alpha=0.25, gamma=2.)
         smooth_l1_loss = nn.SmoothL1Loss()
