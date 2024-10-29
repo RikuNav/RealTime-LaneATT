@@ -75,20 +75,11 @@ class LaneEval(object):
         return s / max(min(4.0, len(gt)), 1.), fp / len(pred) if len(pred) > 0 else 0., fn / max(min(len(gt), 4.), 1.)
 
     @staticmethod
-    def bench_one_submit(pred_file, gt_file):
-        try:
-            json_pred = [json.loads(line) for line in open(pred_file).readlines()]
-        except BaseException as e:
-            raise Exception('Fail to load json file of the prediction.')
-        json_gt = [json.loads(line) for line in open(gt_file).readlines()]
-        if len(json_gt) != len(json_pred):
-            raise Exception('We do not get the predictions of all the test tasks')
-        gts = {img['raw_file']: img for img in json_gt}
+    def bench_one_submit(prediction, ground_truth):
+        gts = {img['raw_file']: img for img in ground_truth}
         accuracy, fp, fn = 0., 0., 0.
         run_times = []
-        for pred in json_pred:
-            if 'raw_file' not in pred or 'lanes' not in pred or 'run_time' not in pred:
-                raise Exception('raw_file or lanes or run_time not in some predictions.')
+        for pred in prediction:
             raw_file = pred['raw_file']
             pred_lanes = pred['lanes']
             run_time = pred['run_time']
@@ -107,23 +98,9 @@ class LaneEval(object):
             fn += n
         num = len(gts)
         # the first return parameter is the default ranking parameter
-        return json.dumps([{
-            'name': 'Accuracy',
-            'value': accuracy / num,
-            'order': 'desc'
-        }, {
-            'name': 'FP',
-            'value': fp / num,
-            'order': 'asc'
-        }, {
-            'name': 'FN',
-            'value': fn / num,
-            'order': 'asc'
-        }, {
-            'name': 'FPS',
-            'value': 1000. / np.mean(run_times)
-        }])
-
+        
+        # in order, it returns accuracy, fp, fn, running time
+        return accuracy / num, fp/num, fn/num, 1000. / np.mean(run_times)
 
 if __name__ == '__main__':
     import sys

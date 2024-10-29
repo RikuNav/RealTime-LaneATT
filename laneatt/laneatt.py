@@ -10,6 +10,7 @@ import yaml
 import numpy as np
 import torch.nn as nn
 
+
 class LaneATT(nn.Module):
     def __init__(self, config) -> None:
         super(LaneATT, self).__init__()
@@ -234,7 +235,7 @@ class LaneATT(nn.Module):
         starting_epoch = 1
         # Load the last training state if the resume flag is set and modify the starting epoch and model
         if resume:
-            last_epoch, model, optimizer, scheduler = utils.load_last_train_state(model, optimizer, scheduler, self.__laneatt_config)
+            last_epoch, model, optimizer, scheduler = utils.load_last_train_state(model, optimizer, scheduler, self.__laneatt_config['checkpoints_dir'])
             starting_epoch = last_epoch + 1
         
         epochs = self.__laneatt_config['epochs']
@@ -286,7 +287,7 @@ class LaneATT(nn.Module):
 
         model = self.to(self.device)
 
-        last_epoch, model = utils.load_last_train_state_eval(model, self.__laneatt_config)
+        last_epoch, model = utils.load_last_train_state_eval(model, self.__laneatt_config['checkpoints_dir'])
         evaluated_epoch = last_epoch
 
         model.eval()
@@ -304,7 +305,10 @@ class LaneATT(nn.Module):
                 outputs = model(images)
                 loss, _ = model.__loss(outputs, labels)
             
-            logger.debug('Loss: %.5f - Epoch: %d', loss.item(), evaluated_epoch)
+                accuracy, fp, fn, running_time = utils.LaneEval.bench_one_submit(outputs, labels)
+
+            eval_line = 'Loss: {:.5f} - Accuracy: {:.5f} - FP: {:.5f} - FN: {:.5f} - Running Time: {:.5f}'.format(loss.item(), accuracy, fp, fn, running_time)   
+            logger.debug(eval_line)
 
     def __loss(self, proposals_list, targets, cls_loss_weight=10):
         focal_loss = utils.FocalLoss(alpha=0.25, gamma=2.)
@@ -495,7 +499,7 @@ class LaneATT(nn.Module):
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                    batch_size=self.__laneatt_config['batch_size'],
                                                    shuffle=True,
-                                                   num_workers=20,
+                                                   num_workers=0,
                                                    worker_init_fn=self.__worker_init_fn_)
         return train_loader
     
